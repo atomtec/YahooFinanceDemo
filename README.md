@@ -11,4 +11,5 @@ Once in foreground immediately fetches data
 The data is synced directly to DB from where the view is updated
 
 Demo
+
 ![YahooFinance Demo](demo/demo.gif)
