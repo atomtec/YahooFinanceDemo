@@ -28,6 +28,9 @@ public interface StockDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(AppStock stock);
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertAll(List<AppStock> stocks);
+
 
 
     @Query("DELETE FROM stock_table")

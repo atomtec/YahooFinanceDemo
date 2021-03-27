@@ -30,7 +30,7 @@ public class StockListAdapter extends RecyclerView.Adapter<StockListAdapter.Stoc
     private List<AppStock> mStocks;
 
 
-    public StockListAdapter(Context context, boolean showPercentage) {
+    public StockListAdapter(Context context) {
         this.mContext = context;
         mDollarFormat = (DecimalFormat) NumberFormat.getCurrencyInstance(Locale.US);
         mDollarFormatWithPlus = (DecimalFormat) NumberFormat.getCurrencyInstance(Locale.US);
@@ -39,7 +39,6 @@ public class StockListAdapter extends RecyclerView.Adapter<StockListAdapter.Stoc
         mPercentageFormat.setMaximumFractionDigits(2);
         mPercentageFormat.setMinimumFractionDigits(2);
         mPercentageFormat.setPositivePrefix("+");
-        this.mShowPercentage = showPercentage;
     }
 
     public void setStocks(List<AppStock> stocks){

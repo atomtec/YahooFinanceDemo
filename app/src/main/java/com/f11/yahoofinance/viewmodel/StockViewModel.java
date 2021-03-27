@@ -1,6 +1,7 @@
 package com.f11.yahoofinance.viewmodel;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
 
 import androidx.lifecycle.AndroidViewModel;
@@ -9,6 +10,7 @@ import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.OnLifecycleEvent;
+import androidx.lifecycle.ViewModel;
 
 import com.f11.yahoofinance.data.model.AppStock;
 import com.f11.yahoofinance.data.model.FetchStatus;
@@ -18,7 +20,7 @@ import com.f11.yahoofinance.view.ui.StockDisplayFragment;
 
 import java.util.List;
 
-public class StockViewModel extends AndroidViewModel implements LifecycleObserver {
+public class StockViewModel extends ViewModel implements LifecycleObserver {
 
     private StockRepository mRepository;
     // Using LiveData and caching what getAlphabetizedWords returns has several benefits:
@@ -29,9 +31,9 @@ public class StockViewModel extends AndroidViewModel implements LifecycleObserve
     private MutableLiveData<FetchStatus> mFetchData;
     private static final String TAG = StockViewModel.class.getSimpleName();
 
-    public StockViewModel (Application application) {
-        super(application);
-        mRepository = new StockRepository(application);
+    public StockViewModel (StockRepository repo) {
+        super();
+        mRepository = repo;
         mAllStocks = mRepository.getAllStocks();
         mFetchData = mRepository.getFetchLiveData();
     }
@@ -54,4 +56,6 @@ public class StockViewModel extends AndroidViewModel implements LifecycleObserve
         mRepository.stopLiveSync();
         Log.d(TAG, "paused observing lifecycle.");
     }
+
+
 }

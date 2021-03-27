@@ -1,10 +1,12 @@
 package com.f11.yahoofinance.data.repository;
 
 import android.app.Application;
+import android.content.Context;
 import android.os.AsyncTask;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.room.Room;
 
 import com.f11.yahoofinance.data.model.AppStock;
 import com.f11.yahoofinance.data.model.FetchStatus;
@@ -13,6 +15,8 @@ import com.f11.yahoofinance.data.sync.SyncManager;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class StockRepository {
 
@@ -21,18 +25,44 @@ public class StockRepository {
     private SyncManager mSyncManager;
     private MutableLiveData<FetchStatus> fetchLiveData = new MutableLiveData<FetchStatus>();
 
+    Runnable refreshStockRunaable = new Runnable(){
+
+        @Override
+        public void run() {
+            try {
+                refreshStocks();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
+    private static StockRepository INSTANCE = null;
 
 
-    public StockRepository (Application application) {
-        StockDataBase db = StockDataBase.getDatabase(application);
-        mStockDao = db.mStockDao();
+
+    public static StockRepository getInstance(final Context context) {
+        if (INSTANCE == null) {
+            synchronized (StockDataBase.class) {
+                if (INSTANCE == null) {
+                    INSTANCE =new StockRepository(context.getApplicationContext());
+                }
+            }
+        }
+        return INSTANCE;
+    }
+
+
+
+    private  StockRepository (Context application) {
+        mStockDao = StockDataBase.getDatabase(application).mStockDao();
         mAllStocks = mStockDao.getAllStocks();
         mSyncManager = SyncManager.getInstance(application);
+        ExecutorService mExecutor = Executors.newSingleThreadExecutor();
+        mExecutor.submit(refreshStockRunaable);
     }
 
-    public List<AppStock> getAllStocksSync(){
-        return mStockDao.getAllStocksSync();
-    }
+
 
     // Room executes all queries on a separate thread.
     // Observed LiveData will notify the observer when the data has changed.
@@ -49,16 +79,14 @@ public class StockRepository {
     }
 
 
-    private  void insert (AppStock stock) {
-        new insertAsyncTask(mStockDao).execute(stock);
-    }
+
 
     public void stopLiveSync(){
         mSyncManager.stopLiveSync();
     }
 
     public void startLiveSync(){
-        new startSyncAndSchedule(mStockDao,mSyncManager).execute();
+        mSyncManager.startLiveSync();
     }
 
     private static class insertAsyncTask extends AsyncTask<AppStock, Void, Void> {
@@ -76,26 +104,18 @@ public class StockRepository {
         }
     }
 
-
-    private static class startSyncAndSchedule extends AsyncTask<Void, Void, Void> {
-
-        private StockDao mAsyncTaskDao;
-        private SyncManager mAsyncSyncManager;
-
-        startSyncAndSchedule(StockDao dao , SyncManager syncManager) {
-            mAsyncTaskDao = dao;
-            mAsyncSyncManager = syncManager;
-        }
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            List<AppStock> dbStocks = mAsyncTaskDao.getAllStocksSync();
-            if(dbStocks != null && dbStocks.size() > 0 ){
-                mAsyncSyncManager.syncAndSchedule();
-            }
-            return null;
+    //This should be called from Background thread onlu
+    public void refreshStocks() throws IOException {
+        List<AppStock> dbStocks = mStockDao.getAllStocksSync();
+        List<AppStock> networkStocks = null;
+        if(dbStocks.size() > 0){
+             networkStocks = RemoteProviderManager.getInstance().getSDKProvider().getRemoteStocks(dbStocks);
+             mStockDao.insertAll(networkStocks);
         }
     }
+
+
+  
     //TODO add RX maybe
 
     private static class searchAndAddStock extends AsyncTask<String, Void, Void> {
@@ -104,14 +124,14 @@ public class StockRepository {
         private MutableLiveData<FetchStatus> mFetchStatusLiveData;
         AppStock mAppStock ;
         FetchStatus mFetchStatus;
-        SyncManager mAsyncSyncManager;
+
 
         searchAndAddStock(StockDao dao, MutableLiveData<FetchStatus> status,
                           SyncManager syncManager) {
             mAsyncTaskDao = dao;
             mFetchStatusLiveData = status;
             mFetchStatus = new FetchStatus();
-            mAsyncSyncManager = syncManager;
+
         }
 
         @Override
@@ -136,7 +156,7 @@ public class StockRepository {
                 mFetchStatus.setFetchOpComplete(true);
                 mFetchStatus.setFetchStatus(FetchStatus.STOCK_FOUND);
                 mFetchStatusLiveData.postValue(mFetchStatus);
-                mAsyncSyncManager.syncAndSchedule();//For the first time case
+
             }
             else if (mFetchStatus.getFetchStatus() == FetchStatus.FETCHING){
                 // Stock not found

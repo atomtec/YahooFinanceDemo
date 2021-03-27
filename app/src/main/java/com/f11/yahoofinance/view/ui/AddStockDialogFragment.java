@@ -17,13 +17,14 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.f11.yahoofinance.R;
 import com.f11.yahoofinance.data.model.AppStock;
+import com.f11.yahoofinance.data.repository.StockRepository;
 import com.f11.yahoofinance.viewmodel.StockViewModel;
+import com.f11.yahoofinance.viewmodel.StockViewModelFactory;
 
 public class AddStockDialogFragment extends DialogFragment {
 
 
     EditText mStockText;
-    private StockViewModel mStockViewModel;
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -33,7 +34,6 @@ public class AddStockDialogFragment extends DialogFragment {
         LayoutInflater inflater = LayoutInflater.from(getActivity());
         View custom = inflater.inflate(R.layout.add_stock_dialog, null);
 
-        mStockViewModel = new ViewModelProvider(this).get(StockViewModel.class);
 
         mStockText = custom.findViewById(R.id.dialog_stock);
 

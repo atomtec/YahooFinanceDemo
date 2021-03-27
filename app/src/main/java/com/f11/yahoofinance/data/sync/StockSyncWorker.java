@@ -10,6 +10,7 @@ import androidx.work.WorkerParameters;
 import com.f11.yahoofinance.data.model.AppStock;
 import com.f11.yahoofinance.data.repository.StockDao;
 import com.f11.yahoofinance.data.repository.StockDataBase;
+import com.f11.yahoofinance.data.repository.StockRepository;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,13 +19,12 @@ import java.util.List;
 public class StockSyncWorker extends Worker {
 
 
-    private StockDao mStockDao;
+    private StockRepository mStockRepo;
     private static final String TAG = StockSyncWorker.class.getSimpleName();
 
     public StockSyncWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
-        StockDataBase db = StockDataBase.getDatabase(context);
-        mStockDao = db.mStockDao();
+        mStockRepo = StockRepository.getInstance(context.getApplicationContext());
         Log.i(TAG, "StockSyncWorker created");
     }
 
@@ -32,21 +32,14 @@ public class StockSyncWorker extends Worker {
 
 
     @NonNull
-    @Override
+    @Override //Runs in background thead
     public Result doWork() {
-        Log.i(TAG, "doWork called for this worker");
-        List<AppStock> stocks = mStockDao.getAllStocksSync();
-        List<AppStock> appStocks = new ArrayList<>();
+
         try {
-            appStocks = RemoteProviderManager.getInstance().
-                    getSDKProvider().getRemoteStocks(stocks);
+           mStockRepo.refreshStocks();
         } catch (IOException e) {
             e.printStackTrace();
             Result.retry();
-        }
-
-        for (AppStock stock : appStocks){
-            mStockDao.insert(stock);
         }
         return Result.success();
     }

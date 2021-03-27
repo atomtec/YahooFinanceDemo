@@ -66,9 +66,9 @@ public class SyncManager {
 
     }
 
-    public void syncAndSchedule(){
+    public void startLiveSync(){
         fetchNow();
-        startLiveSync();
+        schedule();
     }
 
     /**
@@ -77,7 +77,7 @@ public class SyncManager {
      * once the app is stopped sync stops
      * Syncing every 15 seconds
      */
-    private void startLiveSync(){
+    private void schedule(){
         Log.i(TAG, "startLiveSync() started");
         if(mLiveTimer == null)
             mLiveTimer = new Timer();

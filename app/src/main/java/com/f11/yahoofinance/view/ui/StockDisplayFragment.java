@@ -5,13 +5,17 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.AppCompatToggleButton;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -21,24 +25,24 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.f11.yahoofinance.R;
 import com.f11.yahoofinance.data.model.AppStock;
 import com.f11.yahoofinance.data.model.FetchStatus;
+import com.f11.yahoofinance.data.repository.StockRepository;
 import com.f11.yahoofinance.data.sync.SyncManager;
 import com.f11.yahoofinance.view.adapter.StockListAdapter;
 import com.f11.yahoofinance.viewmodel.StockViewModel;
+import com.f11.yahoofinance.viewmodel.StockViewModelFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static android.widget.Toast.makeText;
-import static com.f11.yahoofinance.view.ui.MainActivity.SHOW_PERCENTAGE_KEY;
+
 
 public class StockDisplayFragment extends Fragment {
 
     private StockViewModel mStockViewModel;
     RecyclerView mStockRecyclerView;
     StockListAdapter mAdapter;
-    List<AppStock> mStock = new ArrayList<AppStock>();
     View mProgressBar ;
-    SharedPreferences mPrefs;
     private static final String TAG = StockDisplayFragment.class.getSimpleName();
 
     @Override
@@ -52,14 +56,14 @@ public class StockDisplayFragment extends Fragment {
 
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        mPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        boolean showPercentage = mPrefs.getBoolean(SHOW_PERCENTAGE_KEY,false);
         mStockRecyclerView = view.findViewById(R.id.recycler_view);
-        mAdapter = new StockListAdapter(getContext(), showPercentage);
+        mAdapter = new StockListAdapter(getContext());
         mStockRecyclerView.setAdapter(mAdapter);
         mStockRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         // Get a new or existing ViewModel from the ViewModelProvider.
-        mStockViewModel = new ViewModelProvider(this).get(StockViewModel.class);
+
+        mStockViewModel = new ViewModelProvider(getActivity(), new StockViewModelFactory(StockRepository.getInstance(getContext().getApplicationContext())))
+                .get(StockViewModel.class);
         mProgressBar = view.findViewById(R.id.llProgressBar);
         getLifecycle().addObserver(mStockViewModel);//stopsyncing when fragment is onstop
 
@@ -102,48 +106,30 @@ public class StockDisplayFragment extends Fragment {
             }
         });
 
-        //Not using Live Data for this
-        mPrefs.registerOnSharedPreferenceChangeListener(listener);
+
+        setHasOptionsMenu(true);
     }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+
+        inflater.inflate(R.menu.menu_main, menu);
+        AppCompatToggleButton toggleMenu = menu.findItem(R.id.switchId)
+                .getActionView().findViewById(R.id.displaymodeswitch);
+        toggleMenu.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mAdapter.toggleMode(isChecked);
+            }
+        });
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+
 
     public void addStock(String symbol){
         mProgressBar.setVisibility(View.VISIBLE);
         mStockViewModel.searchAndStock(symbol);
     }
 
-    @Override
-    public void onStop() {
-        super.onStop();
-        Log.i(TAG, "onStop() called");
-    }
 
-    @Override
-    public void onPause() {
-        super.onPause();
-        Log.i(TAG, "onPause() called");
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        Log.i(TAG, "onResume() called");
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.i(TAG, "onDestroy() called");
-        mPrefs.unregisterOnSharedPreferenceChangeListener(listener);
-    }
-
-    SharedPreferences.OnSharedPreferenceChangeListener listener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-        public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
-            // listener implementation
-            if (key.equals(SHOW_PERCENTAGE_KEY)) {
-                boolean showPercentage = prefs.getBoolean(SHOW_PERCENTAGE_KEY, false);
-                mAdapter.toggleMode(showPercentage);
-            }
-
-        }
-    };
 }
